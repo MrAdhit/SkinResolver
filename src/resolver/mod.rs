@@ -36,6 +36,8 @@ pub fn restore_cache() {
         return;
     }
 
+    println!("Restoring cache");
+
     fs::read_dir(path).unwrap().for_each(|f| {
         let entry = f.unwrap();
         if !entry.file_type().unwrap().is_file() {
@@ -45,8 +47,6 @@ pub fn restore_cache() {
             return;
         }
 
-        dbg!(&entry);
-
         let bytes = &fs::read(entry.path()).unwrap()[..];
         let mut buffer = BufReader::new(bytes);
 
@@ -55,7 +55,6 @@ pub fn restore_cache() {
         let signature = read_len_prefix!(&mut buffer);
 
         drop(CACHES.write().unwrap().insert(username.split_once(".").unwrap().0.to_string(), SkinTexture { value, signature }));
-        println!("Restoring cache");
     });
 }
 
