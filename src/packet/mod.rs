@@ -6,6 +6,8 @@ mod traits;
 mod username;
 mod skin_refresh;
 
+use anyhow::Result;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::io::{AsyncReadExt, BufReader};
 
 pub use self::traits::*;
@@ -47,8 +49,10 @@ pub enum ResponsePacketID {
 
 #[async_trait::async_trait]
 impl PacketEncoder for ResponsePacketID {
-    async fn encode(&self) -> Box<[u8]> {
-        Box::new([(self.to_owned() as u8).clone()])
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        writer.write(&[self.to_owned() as u8]).await?;
+
+        Ok(())
     }
 }
 
@@ -60,7 +64,9 @@ pub enum OptionPacket {
 
 #[async_trait::async_trait]
 impl PacketEncoder for OptionPacket {
-    async fn encode(&self) -> Box<[u8]> {
-        Box::new([(self.to_owned() as u8).clone()])
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        writer.write(&[self.to_owned() as u8]).await?;
+
+        Ok(())
     }
 }

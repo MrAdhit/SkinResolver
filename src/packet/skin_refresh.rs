@@ -7,13 +7,11 @@ pub struct SkinRefreshPacket {
 
 #[async_trait::async_trait]
 impl PacketEncoder for SkinRefreshPacket {
-    async fn encode(&self) -> Box<[u8]> {
-        let mut buffer = Vec::new();
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        ResponsePacketID::SkinRefresh.encode(writer).await?;
+        self.username.encode(writer).await?;
 
-        buffer.extend_from_slice(&ResponsePacketID::SkinRefresh.encode().await);
-        buffer.extend_from_slice(&self.username.encode().await);
-
-        buffer.into_boxed_slice()
+        Ok(())
     }
 }
 

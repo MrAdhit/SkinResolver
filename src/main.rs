@@ -4,6 +4,7 @@ mod resolver;
 use std::{env, sync::Arc};
 
 use anyhow::Result;
+use tokio::io::AsyncWrite;
 use tokio::{io::BufReader, net::UdpSocket};
 
 use crate::packet::*;
@@ -33,33 +34,53 @@ async fn main() -> Result<()> {
 
             tokio::spawn(async move {
                 let bytes = &buf[..size];
+                let mut writer = Vec::new();
+                let mut handler = PacketHandler {
+                    writer: &mut writer
+                };
 
                 if let Some(packet) = SkinRequestPacket::decode(&mut BufReader::new(bytes)).await {
-                    let Some(resolved) = <Resolver as SkinResolver>::resolve(&packet.username.0, true).await else {
-                        socket.send_to(&OptionPacket::None.encode().await, peer).await.unwrap();
-                        return;
-                    };
-
-                    let skin = SkinResponsePacket {
-                        username: packet.username,
-                        value: SkinValue(resolved.value),
-                        signature: SkinSignature(resolved.signature),
-                    };
-
-                    socket.send_to(&OptionPacket::Some.encode().await, peer).await.unwrap();
-                    socket.send_to(&skin.encode().await, peer).await.unwrap();
+                    handler.skin_request(packet).await;
                 }
 
                 if let Some(packet) = SkinRefreshPacket::decode(&mut BufReader::new(bytes)).await {
-                    let Some(_) = <Resolver as SkinResolver>::resolve(&packet.username.0, false).await else {
-                        socket.send_to(&OptionPacket::None.encode().await, peer).await.unwrap();
-                        return;
-                    };
-
-                    socket.send_to(&OptionPacket::Some.encode().await, peer).await.unwrap();
-                    socket.send_to(&packet.encode().await, peer).await.unwrap();
+                    handler.skin_refresh(packet).await;
                 }
+                
+                socket.send_to(&writer, peer).await.unwrap();
             });
         }
+    }
+}
+
+struct PacketHandler<'a, W: AsyncWrite + Send + Unpin> {
+    writer: &'a mut W
+}
+
+impl<'a, W: AsyncWrite + Send + Unpin> PacketHandler<'a, W> {
+    async fn skin_request(&mut self, packet: SkinRequestPacket) {
+        let Some(resolved) = <Resolver as SkinResolver>::resolve(&packet.username.0, true).await else {
+            OptionPacket::None.encode(self.writer).await.unwrap();
+            return;
+        };
+    
+        let skin = SkinResponsePacket {
+            username: packet.username,
+            value: SkinValue(resolved.value),
+            signature: SkinSignature(resolved.signature),
+        };
+    
+        OptionPacket::Some.encode(self.writer).await.unwrap();
+        skin.encode(self.writer).await.unwrap();
+    }
+
+    async fn skin_refresh(&mut self, packet: SkinRefreshPacket) {
+        let Some(_) = <Resolver as SkinResolver>::resolve(&packet.username.0, false).await else {
+            OptionPacket::None.encode(self.writer).await.unwrap();
+            return;
+        };
+
+        OptionPacket::Some.encode(self.writer).await.unwrap();
+        packet.encode(self.writer).await.unwrap();
     }
 }

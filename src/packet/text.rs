@@ -6,16 +6,11 @@ pub type Text = String;
 
 #[async_trait::async_trait]
 impl PacketEncoder for Text {
-    async fn encode(&self) -> Box<[u8]> {
-        let mut buffer = Vec::new();
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        writer.write(&(self.len() as u32).to_be_bytes()).await?;
+        writer.write(self.as_bytes()).await?;
 
-        let length = (self.len() as u32).to_be_bytes();
-        let value = self.as_bytes();
-
-        buffer.extend_from_slice(&length[..]);
-        buffer.extend_from_slice(value);
-
-        buffer.into_boxed_slice()
+        Ok(())
     }
 }
 

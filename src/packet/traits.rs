@@ -1,8 +1,9 @@
-use tokio::io::BufReader;
+use anyhow::Result;
+use tokio::io::{BufReader, AsyncWrite};
 
 #[async_trait::async_trait]
 pub trait PacketEncoder {
-    async fn encode(&self) -> Box<[u8]>;
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()>;
 }
 
 #[async_trait::async_trait]

@@ -1,8 +1,5 @@
 use super::*;
 
-// pub type SkinValue = Username;
-// pub type SkinSignature = Text;
-
 #[derive(Debug)]
 pub struct SkinValue(pub Text);
 
@@ -11,8 +8,8 @@ pub struct SkinSignature(pub Text);
 
 #[async_trait::async_trait]
 impl PacketEncoder for SkinValue {
-    async fn encode(&self) -> Box<[u8]> {
-        Text::encode(&self.0).await
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        Text::encode(&self.0, writer).await
     }
 }
 
@@ -27,8 +24,8 @@ impl PacketDecoder for SkinValue {
 
 #[async_trait::async_trait]
 impl PacketEncoder for SkinSignature {
-    async fn encode(&self) -> Box<[u8]> {
-        Text::encode(&self.0).await
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        Text::encode(&self.0, writer).await
     }
 }
 

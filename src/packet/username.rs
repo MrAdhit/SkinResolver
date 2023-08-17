@@ -7,8 +7,8 @@ pub struct Username(pub Text);
 
 #[async_trait::async_trait]
 impl PacketEncoder for Username {
-    async fn encode(&self) -> Box<[u8]> {
-        Text::encode(&self.0).await
+    async fn encode<W: AsyncWrite + Send + Unpin>(&self, writer: &mut W) -> Result<()> {
+        Text::encode(&self.0, writer).await
     }
 }
 
